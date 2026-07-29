@@ -17,3 +17,5 @@ Thumbs.db
 
 # Ignore dataset
 Dataset/
+
+typesense-data/
