@@ -22,6 +22,21 @@ const client = new Typesense.Client({
   connectionTimeoutSeconds: 5,
 });
 
+async function verifyTypesenseConnection() {
+  try {
+    const health = await client.health.retrieve();
+    console.log("Typesense health:", health);
+
+    const collection = await client.collections("products").retrieve();
+    console.log("Typesense collection verified:", {
+      name: collection.name,
+      fieldCount: Array.isArray(collection.fields) ? collection.fields.length : 0,
+    });
+  } catch (error) {
+    console.error("Typesense startup verification failed:", error.stack || error);
+  }
+}
+
 // =========================
 // Home Route
 // =========================
@@ -34,6 +49,12 @@ app.get("/", (req, res) => {
 // =========================
 app.get("/search", async (req, res) => {
   try {
+    console.log("Incoming request:", {
+      method: req.method,
+      url: req.originalUrl,
+      query: req.query,
+    });
+
     const query = req.query.q || "*";
     const page = parseInt(req.query.page) || 1;
 
@@ -101,19 +122,48 @@ app.get("/search", async (req, res) => {
       searchParameters.filter_by = filters.join(" && ");
     }
 
+    console.log("Parsed query:", {
+      query,
+      page,
+      category,
+      store,
+      rating,
+      minPrice,
+      maxPrice,
+      searchParameters,
+    });
+
+    console.log("Typesense request:", searchParameters);
+
     const results = await client
       .collections("products")
       .documents()
       .search(searchParameters);
 
+    console.log("Typesense response:", {
+      found: results?.found,
+      hits: results?.hits?.length || 0,
+    });
+
+    console.log("Final response returned to frontend:", {
+      status: "success",
+      query,
+      hits: results?.hits?.length || 0,
+    });
+
     res.json(results);
 
   } catch (error) {
     console.error("Search Error:", error);
+    console.log("Final response returned to frontend:", {
+      status: "error",
+      message: error.message,
+    });
 
     res.status(500).json({
       success: false,
       message: error.message,
+      ...(process.env.NODE_ENV !== "production" ? { stack: error.stack } : {}),
     });
   }
 });
@@ -137,13 +187,21 @@ app.get("/suggestions", async (req, res) => {
         query_by: "title",
         prefix: true,
         per_page: 8,
+        prioritize_exact_match: true,
+        num_typos: 1,
       });
 
-    const suggestions = [
-      ...new Set(
-        results.hits.map((item) => item.document.title)
-      ),
-    ];
+    const suggestions = Array.from(
+      new Map(
+        results.hits
+          .map((item) => ({
+            title: item?.document?.title || "",
+            display_title: item?.document?.display_title || item?.document?.displayTitle || item?.document?.title || "",
+          }))
+          .filter((item) => item.title)
+          .map((item) => [item.title, item])
+      ).values()
+    );
 
     res.json(suggestions);
 
@@ -161,4 +219,5 @@ const PORT = 3000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  verifyTypesenseConnection();
 });

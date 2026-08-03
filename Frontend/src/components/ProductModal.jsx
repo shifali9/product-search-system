@@ -1,98 +1,47 @@
+import { cleanProductDescription, formatPrice, formatProductDisplay, formatRating, getProductImage } from "../utils/catalog";
+
 function ProductModal({ product, onClose }) {
   if (!product) return null;
+  const displayProduct = formatProductDisplay(product);
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
+    <div className="product-modal-overlay" onClick={onClose}>
+      <div className="product-modal" onClick={(e) => e.stopPropagation()}>
 
         <button
-          style={styles.closeButton}
+          className="product-modal-close"
           onClick={onClose}
         >
           ✖
         </button>
 
         <img
-          src={product.image}
-          alt={product.title}
-          style={styles.image}
+          src={getProductImage(displayProduct)}
+          alt={displayProduct.displayTitle}
+          className="product-modal-image"
+          loading="lazy"
+          decoding="async"
+          onLoad={(event) => event.currentTarget.classList.add("loaded")}
         />
 
-        <h2>{product.title}</h2>
+        <h2 className="product-modal-title">{displayProduct.displayTitle}</h2>
 
-        <p>
-          <strong>🏪 Store:</strong> {product.store}
-        </p>
+        <div className="product-modal-meta">
+          <p><strong>Brand:</strong> {displayProduct.displayBrand || "Unknown Brand"}</p>
+          <p><strong>Price:</strong> {formatPrice(product.price)}</p>
+          <p><strong>Rating:</strong> {formatRating(product.average_rating)}</p>
+          <p><strong>Category:</strong> {product.main_category || "N/A"}</p>
+        </div>
 
-        <p>
-          <strong>💲 Price:</strong> ${product.price}
-        </p>
+        <h3 className="product-modal-section-title">Description</h3>
 
-        <p>
-          <strong>⭐ Rating:</strong> {product.average_rating}
-        </p>
-
-        <p>
-          <strong>📂 Category:</strong> {product.main_category}
-        </p>
-
-        <hr />
-
-        <h3>Description</h3>
-
-        <p style={{ lineHeight: "1.7" }}>
-          {product.description || "No description available."}
+        <p className="product-modal-description">
+          {cleanProductDescription(product.description, 120)}
         </p>
 
       </div>
     </div>
   );
 }
-
-const styles = {
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0,0,0,0.6)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-  },
-
-  modal: {
-    background: "white",
-    width: "700px",
-    maxHeight: "90vh",
-    overflowY: "auto",
-    borderRadius: "12px",
-    padding: "25px",
-    position: "relative",
-  },
-
-  image: {
-    width: "100%",
-    height: "300px",
-    objectFit: "contain",
-    marginBottom: "20px",
-  },
-
-  closeButton: {
-    position: "absolute",
-    top: "15px",
-    right: "15px",
-    background: "red",
-    color: "white",
-    border: "none",
-    borderRadius: "50%",
-    width: "35px",
-    height: "35px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-};
 
 export default ProductModal;
